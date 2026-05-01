@@ -36,6 +36,9 @@ public:
     void   setSpeed (double s)            { speed.store (juce::jlimit (0.25, 4.0, s)); }
     double getSpeed() const               { return speed.load(); }
 
+    /** Master multiplier applied on top of per-voice speed. Engine broadcasts. */
+    void   setMasterSpeed (double m)      { masterSpeed.store (juce::jlimit (0.25, 4.0, m)); }
+
     void   setPlaying (bool p)            { playing.store (p); }
     bool   isPlaying() const              { return playing.load(); }
 
@@ -66,6 +69,7 @@ private:
 
     std::atomic<bool>        playing { false };
     std::atomic<double>      speed   { 1.0 };
+    std::atomic<double>      masterSpeed { 1.0 };
     std::atomic<int64_t>     loopStartSamples { 0 };
     std::atomic<int64_t>     loopEndSamples   { 0 };
     std::atomic<double>      readPos { 0.0 };

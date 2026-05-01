@@ -29,6 +29,12 @@ void SamplerEngine::stopAllVoices()
     for (auto& v : voices) v.setPlaying (false);
 }
 
+void SamplerEngine::setMasterSpeed (double m)
+{
+    masterSpeedCache = juce::jlimit (0.25, 4.0, m);
+    for (auto& v : voices) v.setMasterSpeed (masterSpeedCache);
+}
+
 void SamplerEngine::clearAllVoices()
 {
     const juce::ScopedLock sl (engineLock);

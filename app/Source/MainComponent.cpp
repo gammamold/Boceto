@@ -55,6 +55,10 @@ MainComponent::MainComponent()
     addAndMakeVisible (pitch);
     pitch.onChange = [this] (double mult) { sampler.setSpeed (mult); };
 
+    addAndMakeVisible (masterPitch);
+    masterPitch.setStaticLabel ("MASTER");
+    masterPitch.onChange = [this] (double mult) { sampler.setMasterSpeed (mult); };
+
     // --- transport row ---
     fetchBtn .onClick = [this] { onFetchClicked();  }; addAndMakeVisible (fetchBtn);
     recBtn   .onClick = [this] { onRecClicked();    }; addAndMakeVisible (recBtn);
@@ -135,15 +139,17 @@ void MainComponent::resized()
     statusLabel.setBounds (r.removeFromBottom (24));
     r.removeFromBottom (6);
 
-    auto padArea  = r.removeFromBottom (140); // 2 rows of pads + range
-    auto loopRow  = r.removeFromBottom (52);  r.removeFromBottom (4);
-    auto transRow = r.removeFromBottom (52);  r.removeFromBottom (4);
-    auto pitchRow = r.removeFromBottom (44);  r.removeFromBottom (4);
-    auto zoomRow  = r.removeFromBottom (32);  r.removeFromBottom (4);
+    auto padArea   = r.removeFromBottom (140); // 2 rows of pads + range
+    auto loopRow   = r.removeFromBottom (52);  r.removeFromBottom (4);
+    auto transRow  = r.removeFromBottom (52);  r.removeFromBottom (4);
+    auto pitchRow  = r.removeFromBottom (40);  r.removeFromBottom (2);
+    auto masterRow = r.removeFromBottom (36);  r.removeFromBottom (4);
+    auto zoomRow   = r.removeFromBottom (32);  r.removeFromBottom (4);
 
     waveform.setBounds (r);
 
-    pitch.setBounds (pitchRow);
+    pitch.setBounds       (pitchRow);
+    masterPitch.setBounds (masterRow);
 
     {
         const int gap = 4;
@@ -854,8 +860,17 @@ void MainComponent::onPadClicked (int padIndex)
     selectActivePad (padIndex);
     if (pads[padIndex].occupied)
     {
-        recallPad (padIndex);
-        setStatus ("Triggered PAD " + juce::String (padIndex + 1));
+        auto& v = sampler.voice (padIndex);
+        if (v.isPlaying())
+        {
+            v.setPlaying (false);
+            setStatus ("Stopped PAD " + juce::String (padIndex + 1));
+        }
+        else
+        {
+            recallPad (padIndex);
+            setStatus ("Triggered PAD " + juce::String (padIndex + 1));
+        }
     }
     else
     {

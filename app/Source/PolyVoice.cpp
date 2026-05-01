@@ -82,7 +82,8 @@ void PolyVoice::renderInto (juce::AudioBuffer<float>& dest, int startSample, int
     if (loopEnd <= loopStart + 1.0)
         loopEnd = (double) bufferNumSamples;
 
-    const double rateRatio = (bufferSampleRate / deviceSampleRate) * speed.load();
+    const double rateRatio = (bufferSampleRate / deviceSampleRate)
+                             * speed.load() * masterSpeed.load();
     double pos = readPos.load();
 
     for (int i = 0; i < numSamples; ++i)

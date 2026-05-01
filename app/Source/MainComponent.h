@@ -75,6 +75,7 @@ private:
     // Waveform + pitch
     WaveformDisplay waveform;
     PitchFader      pitch;
+    PitchFader      masterPitch;
 
     // Calculator grid
     juce::TextButton fetchBtn  { "FETCH" };

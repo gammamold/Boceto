@@ -55,6 +55,14 @@ public:
         slider.setValue (0.0, juce::sendNotificationSync);
     }
 
+    /** Replace the left-hand range label with a fixed string (e.g. "MASTER")
+        and stop range cycling from overwriting it. */
+    void setStaticLabel (const juce::String& text)
+    {
+        staticLabel = text;
+        rangeLabel.setText (text, juce::dontSendNotification);
+    }
+
     /** Move the fader to match a rate multiplier without triggering onChange.
         Auto-expands the range if the value falls outside it. */
     void setRateMultiplier (double mult)
@@ -83,8 +91,9 @@ private:
         const auto r = (double) getRangePercent();
         slider.setRange (-r, r, 0.01);
         slider.setValue (juce::jlimit (-r, r, current), juce::sendNotificationSync);
-        rangeLabel.setText ("±" + juce::String (getRangePercent()) + "%",
-                            juce::dontSendNotification);
+        if (staticLabel.isEmpty())
+            rangeLabel.setText ("±" + juce::String (getRangePercent()) + "%",
+                                juce::dontSendNotification);
     }
 
     void updateLabel()
@@ -99,4 +108,5 @@ private:
     juce::Label  valueLabel;
     juce::Label  rangeLabel;
     int          rangeIndex = 0;
+    juce::String staticLabel;
 };

@@ -43,6 +43,10 @@ public:
     /** Wipes every voice's buffer/state under the engine lock. */
     void clearAllVoices();
 
+    /** Master pitch multiplier — broadcast to all voices. Default 1.0. */
+    void   setMasterSpeed (double m);
+    double getMasterSpeed() const { return masterSpeedCache; }
+
     /** Where each voice's clip is cached (persisted across app restarts). */
     juce::File getCacheDir() const;
     juce::File getCachedClipFile (int voiceIdx) const;
@@ -75,6 +79,7 @@ private:
 
     PolyVoice voices[kNumVoices];
     int       activeVoice = 0;
+    double    masterSpeedCache = 1.0;
 
     mutable juce::CriticalSection engineLock;
 
