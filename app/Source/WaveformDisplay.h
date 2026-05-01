@@ -24,6 +24,11 @@ public:
 
     void setSource (const juce::File& f)
     {
+        // Cached clips are always written to the same path (voice{N}.wav);
+        // AudioThumbnailCache keys by path-hash, so without clearing it
+        // the *old* thumbnail is reused after the file is overwritten.
+        thumb.clear();
+        thumbCache.clear();
         thumb.setSource (new juce::FileInputSource (f));
         resetView();
     }
@@ -31,6 +36,7 @@ public:
     void clear()
     {
         thumb.clear();
+        thumbCache.clear();
         resetView();
     }
 
