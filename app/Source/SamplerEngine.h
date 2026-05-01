@@ -40,6 +40,8 @@ public:
     void setActiveVoice (int i)           { activeVoice = juce::jlimit (0, kNumVoices - 1, i); }
 
     void stopAllVoices();
+    /** Wipes every voice's buffer/state under the engine lock. */
+    void clearAllVoices();
 
     /** Where each voice's clip is cached (persisted across app restarts). */
     juce::File getCacheDir() const;

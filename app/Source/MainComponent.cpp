@@ -31,6 +31,9 @@ MainComponent::MainComponent()
     loadLocalBtn.onClick = [this] { onLoadLocalClicked(); };
     addAndMakeVisible (loadLocalBtn);
 
+    newBtn.onClick = [this] { onNewProjectClicked(); };
+    addAndMakeVisible (newBtn);
+
     serverField.setMultiLine (false);
     serverField.setText ("http://100.99.27.104:8000", juce::dontSendNotification);
     addAndMakeVisible (serverField);
@@ -117,6 +120,8 @@ void MainComponent::resized()
     auto r = getLocalBounds().reduced (10);
 
     auto urlRow = r.removeFromTop (40);
+    newBtn      .setBounds (urlRow.removeFromLeft (60));
+    urlRow.removeFromLeft (4);
     clearUrlBtn .setBounds (urlRow.removeFromRight (40));
     urlRow.removeFromRight (4);
     loadLocalBtn.setBounds (urlRow.removeFromRight (70));
@@ -403,6 +408,9 @@ void MainComponent::restoreState()
     activeIdx = juce::jlimit (0, kNumPads - 1, activeIdx);
     selectActivePad (activeIdx);
     refreshPadButtons();
+
+    for (int i = 0; i < kNumPads; ++i)
+        if (pads[i].occupied) { projectDirty = true; break; }
 }
 
 void MainComponent::selectActivePad (int padIndex)
@@ -452,6 +460,7 @@ void MainComponent::loadFromAnyFile (const juce::File& f)
                    + juce::String ((int) sampler.getActiveTransients().size()) + " transients)");
         refreshPadButtons();
         persistState();
+        markDirty();
     }
     else
     {
@@ -573,6 +582,7 @@ void MainComponent::spreadToAllPads (bool useTransients)
 
     refreshPadButtons();
     persistState();
+    markDirty();
 }
 
 // ─── recording ──────────────────────────────────────────────────────────────
@@ -705,6 +715,122 @@ void MainComponent::stopRecordingFlow()
     juce::ignoreUnused (loopsAutoStoppedForRec);
 }
 
+// ─── project (NEW / save) ───────────────────────────────────────────────────
+
+void MainComponent::markDirty()
+{
+    projectDirty = true;
+    if (! newBtn.getButtonText().endsWithChar ('*'))
+        newBtn.setButtonText ("NEW*");
+}
+
+bool MainComponent::saveProjectToDisk()
+{
+    auto projectsRoot = juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+                            .getChildFile ("Boceto").getChildFile ("Projects");
+    projectsRoot.createDirectory();
+
+    const auto stamp = juce::Time::getCurrentTime().formatted ("%Y-%m-%d_%H-%M-%S");
+    auto folder = projectsRoot.getChildFile (stamp);
+    int suffix = 1;
+    while (folder.exists()) folder = projectsRoot.getChildFile (stamp + "_" + juce::String (++suffix));
+    if (! folder.createDirectory()) return false;
+
+    auto* root = new juce::DynamicObject();
+    root->setProperty ("name", stamp);
+    root->setProperty ("active_voice", sampler.getActiveVoice());
+
+    juce::Array<juce::var> padArr;
+    for (int i = 0; i < kNumPads; ++i)
+    {
+        auto* pp = new juce::DynamicObject();
+        pp->setProperty ("occupied",  pads[i].occupied);
+        pp->setProperty ("loopStart", pads[i].loopStart);
+        pp->setProperty ("loopEnd",   pads[i].loopEnd);
+        pp->setProperty ("speed",     pads[i].speed);
+
+        if (pads[i].occupied && pads[i].clipPath.isNotEmpty())
+        {
+            auto src = juce::File (pads[i].clipPath);
+            if (src.existsAsFile())
+            {
+                auto dst = folder.getChildFile ("pad" + juce::String (i) + ".wav");
+                src.copyFileTo (dst);
+                pp->setProperty ("clip_path", dst.getFullPathName());
+            }
+            else
+            {
+                pp->setProperty ("clip_path", juce::var());
+            }
+        }
+        padArr.add (juce::var (pp));
+    }
+    root->setProperty ("pads", padArr);
+
+    auto projectFile = folder.getChildFile ("project.json");
+    if (! projectFile.replaceWithText (juce::JSON::toString (juce::var (root))))
+        return false;
+
+    setStatus ("Saved project: " + folder.getFullPathName());
+    return true;
+}
+
+void MainComponent::clearAllPadsAndState()
+{
+    sampler.stopAllVoices();
+    if (recorder.isRecording()) recorder.stopRecording();
+
+    sampler.clearAllVoices();
+
+    for (int i = 0; i < kNumPads; ++i)
+    {
+        pads[i] = LoopState();
+        sampler.getCachedClipFile (i).deleteFile();
+    }
+
+    waveform.clear();
+    pitch.setRateMultiplier (1.0);
+    pitch.resetToZero();
+
+    projectDirty = false;
+    newBtn.setButtonText ("NEW");
+    refreshPadButtons();
+    persistState();
+    setStatus ("New project");
+}
+
+void MainComponent::onNewProjectClicked()
+{
+    if (! projectDirty)
+    {
+        clearAllPadsAndState();
+        return;
+    }
+
+    juce::AlertWindow::showAsync (
+        juce::MessageBoxOptions()
+            .withIconType (juce::MessageBoxIconType::QuestionIcon)
+            .withTitle ("Start a new project?")
+            .withMessage ("Current pads have unsaved changes.")
+            .withButton ("Save")
+            .withButton ("Discard")
+            .withButton ("Cancel"),
+        [this] (int result)
+        {
+            // JUCE returns 1 for the first button, 2 for the second, etc.
+            if (result == 1)
+            {
+                if (saveProjectToDisk()) clearAllPadsAndState();
+                else                     setStatus ("Project save failed — keeping current state");
+            }
+            else if (result == 2)
+            {
+                clearAllPadsAndState();
+            }
+            // result == 0 / Cancel: do nothing
+        });
+}
+
 void MainComponent::onPadClicked (int padIndex)
 {
     selectActivePad (padIndex);
@@ -729,6 +855,7 @@ void MainComponent::capturePad (int padIndex)
     p.speed     = sampler.voice (padIndex).getSpeed();
     refreshPadButtons();
     persistState();
+    markDirty();
 }
 
 void MainComponent::recallPad (int padIndex)

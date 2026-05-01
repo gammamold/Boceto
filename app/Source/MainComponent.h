@@ -44,6 +44,10 @@ private:
     void onRecClicked();
     void startRecordingFlow();
     void stopRecordingFlow();
+    void onNewProjectClicked();
+    void clearAllPadsAndState();
+    bool saveProjectToDisk();
+    void markDirty();
     void onPadClicked (int padIndex);
 
     void recallPad (int padIndex);
@@ -62,6 +66,7 @@ private:
     juce::TextButton pasteBtn    { "PASTE" };
     juce::TextButton loadLocalBtn{ "LOAD" };
     juce::TextButton clearUrlBtn { "X" };
+    juce::TextButton newBtn      { "NEW" };
 
     std::unique_ptr<juce::FileChooser> fileChooser;
     void onLoadLocalClicked();
@@ -108,6 +113,9 @@ private:
     Recorder                 recorder;
     bool                     inputDeviceOpened = false;
     bool                     loopsAutoStoppedForRec = false;
+
+    // Project state
+    bool                     projectDirty = false;
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)

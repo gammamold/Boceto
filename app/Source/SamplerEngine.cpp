@@ -29,6 +29,18 @@ void SamplerEngine::stopAllVoices()
     for (auto& v : voices) v.setPlaying (false);
 }
 
+void SamplerEngine::clearAllVoices()
+{
+    const juce::ScopedLock sl (engineLock);
+    for (auto& v : voices)
+    {
+        v.setPlaying (false);
+        v.loadFromBuffer (juce::AudioBuffer<float> (0, 0), 44100.0, {});
+        v.prepareForDeviceRate (deviceSampleRate);
+    }
+    activeVoice = 0;
+}
+
 juce::File SamplerEngine::getCacheDir() const
 {
     return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
