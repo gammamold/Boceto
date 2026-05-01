@@ -499,13 +499,19 @@ void MainComponent::onSpreadClicked()
 {
     if (! sampler.hasFile()) { setStatus ("Load a clip first"); return; }
 
-    juce::PopupMenu m;
-    m.addItem (1, "Equal slices");
-    m.addItem (2, "By transients");
-
-    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&spreadBtn),
+    // PopupMenu was unreliable on Android touch screens — same tap that opens
+    // it can also dismiss it. AlertWindow's button row is rock-solid.
+    juce::AlertWindow::showAsync (
+        juce::MessageBoxOptions()
+            .withIconType (juce::MessageBoxIconType::QuestionIcon)
+            .withTitle ("Spread across pads")
+            .withMessage ("How should the source clip be sliced into the 6 pads?")
+            .withButton ("Equal slices")
+            .withButton ("By transients")
+            .withButton ("Cancel"),
         [this] (int choice)
         {
+            // AlertWindow button-index convention is 1-based, in order added.
             if (choice == 1) spreadToAllPads (false);
             else if (choice == 2) spreadToAllPads (true);
         });
