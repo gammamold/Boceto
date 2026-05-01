@@ -23,13 +23,16 @@
       <FILE id="fLE_h" name="LoopExporter.h" compile="0" resource="0" file="Source/LoopExporter.h"/>
       <FILE id="fLE_cpp" name="LoopExporter.cpp" compile="1" resource="0"
             file="Source/LoopExporter.cpp"/>
+      <FILE id="fRC_h" name="Recorder.h" compile="0" resource="0" file="Source/Recorder.h"/>
+      <FILE id="fRC_cpp" name="Recorder.cpp" compile="1" resource="0"
+            file="Source/Recorder.cpp"/>
     </GROUP>
   </MAINGROUP>
   <JUCEOPTIONS JUCE_WEB_BROWSER="0" JUCE_USE_CURL="0"/>
   <EXPORTFORMATS>
     <ANDROIDSTUDIO targetFolder="Builds/Android" androidActivityClass="com.gammamold.youtubesampler.YouTubeSampler"
                    androidMinimumSDK="24" androidTargetSDK="34" androidInternetNeeded="1"
-                   androidMicNeeded="0" microphonePermissionNeeded="0" androidExternalReadPermission="1"
+                   androidMicNeeded="1" microphonePermissionNeeded="1" androidExternalReadPermission="1"
                    androidExternalWritePermission="1" androidScreenOrientation="unspecified"
                    gradleVersion="8.6" gradleToolchain="17" androidPluginVersion="8.2.0"
                    androidNdkVersion="26.1.10909125"

@@ -20,7 +20,7 @@ juce_add_gui_app(YouTubeSampler
     PRODUCT_NAME              "YouTube Sampler"
     BUNDLE_ID                 com.gammamold.youtubesampler
     VERSION                   ${PROJECT_VERSION}
-    MICROPHONE_PERMISSION_ENABLED FALSE
+    MICROPHONE_PERMISSION_ENABLED TRUE
     # iOS
     IPHONE_SCREEN_ORIENTATIONS UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait
     IPAD_SCREEN_ORIENTATIONS   UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait
@@ -36,6 +36,7 @@ target_sources(YouTubeSampler PRIVATE
     Source/PolyVoice.cpp
     Source/AudioFetcher.cpp
     Source/LoopExporter.cpp
+    Source/Recorder.cpp
 )
 
 target_compile_definitions(YouTubeSampler PRIVATE

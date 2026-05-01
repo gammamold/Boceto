@@ -54,6 +54,7 @@ MainComponent::MainComponent()
 
     // --- transport row ---
     fetchBtn .onClick = [this] { onFetchClicked();  }; addAndMakeVisible (fetchBtn);
+    recBtn   .onClick = [this] { onRecClicked();    }; addAndMakeVisible (recBtn);
     playBtn  .onClick = [this] { onPlayClicked();   }; addAndMakeVisible (playBtn);
     stopBtn  .onClick = [this] { onStopClicked();   }; addAndMakeVisible (stopBtn);
     exportBtn.onClick = [this] { onExportClicked(); }; addAndMakeVisible (exportBtn);
@@ -100,6 +101,8 @@ MainComponent::~MainComponent()
 {
     persistState();
     stopTimer();
+    if (recorder.isRecording()) recorder.stopRecording();
+    if (inputDeviceOpened) deviceManager.removeAudioCallback (&recorder);
     deviceManager.removeAudioCallback (&audioSourcePlayer);
     audioSourcePlayer.setSource (nullptr);
 }
@@ -160,7 +163,7 @@ void MainComponent::resized()
         }
     };
 
-    layoutRow (transRow, { &fetchBtn,  &playBtn,   &stopBtn,  &exportBtn });
+    layoutRow (transRow, { &fetchBtn,  &recBtn, &playBtn, &stopBtn, &exportBtn });
     layoutRow (loopRow,  { &setInBtn,  &setOutBtn, &saveBtn,  &resetBtn  });
 
     const int padGap = 4;
@@ -186,6 +189,12 @@ void MainComponent::timerCallback()
         waveform.setLoopStart (sampler.getLoopStartNorm());
         waveform.setLoopEnd   (sampler.getLoopEndNorm());
         waveform.setPlayhead  (sampler.getPlayheadNorm());
+    }
+
+    if (recorder.isRecording())
+    {
+        const int sec = (int) recorder.getElapsedSeconds();
+        recBtn.setButtonText ("REC " + juce::String (sec) + "s");
     }
 }
 
@@ -564,6 +573,136 @@ void MainComponent::spreadToAllPads (bool useTransients)
 
     refreshPadButtons();
     persistState();
+}
+
+// ─── recording ──────────────────────────────────────────────────────────────
+
+#if JUCE_ANDROID
+namespace juce { extern JNIEnv* getEnv() noexcept; }
+
+static bool androidHeadphonesConnected()
+{
+    auto* env = juce::getEnv();
+    if (env == nullptr) return false;
+
+    jclass activityThreadCls = env->FindClass ("android/app/ActivityThread");
+    if (activityThreadCls == nullptr) { env->ExceptionClear(); return false; }
+    jmethodID currentApp = env->GetStaticMethodID (activityThreadCls,
+                                                    "currentApplication",
+                                                    "()Landroid/app/Application;");
+    jobject app = env->CallStaticObjectMethod (activityThreadCls, currentApp);
+    if (app == nullptr) { env->ExceptionClear(); return false; }
+
+    jclass contextCls = env->FindClass ("android/content/Context");
+    jmethodID getSystemService = env->GetMethodID (contextCls, "getSystemService",
+                                                    "(Ljava/lang/String;)Ljava/lang/Object;");
+    jstring audioName = env->NewStringUTF ("audio");
+    jobject am = env->CallObjectMethod (app, getSystemService, audioName);
+    env->DeleteLocalRef (audioName);
+    if (am == nullptr) { env->ExceptionClear(); return false; }
+
+    jclass amCls = env->FindClass ("android/media/AudioManager");
+    jmethodID isWiredHeadsetOn  = env->GetMethodID (amCls, "isWiredHeadsetOn",  "()Z");
+    jmethodID isBluetoothA2dpOn = env->GetMethodID (amCls, "isBluetoothA2dpOn", "()Z");
+
+    bool wired = env->CallBooleanMethod (am, isWiredHeadsetOn);
+    bool bt    = env->CallBooleanMethod (am, isBluetoothA2dpOn);
+
+    env->DeleteLocalRef (am);
+    env->DeleteLocalRef (app);
+    env->DeleteLocalRef (amCls);
+    env->DeleteLocalRef (contextCls);
+    env->DeleteLocalRef (activityThreadCls);
+
+    return wired || bt;
+}
+#endif
+
+static bool isOutputRouteSafeForMonitoring()
+{
+   #if JUCE_ANDROID
+    return androidHeadphonesConnected();
+   #else
+    // Desktop dev: assume an audio interface or headphones — don't auto-stop loops.
+    return true;
+   #endif
+}
+
+void MainComponent::onRecClicked()
+{
+    if (recorder.isRecording())
+    {
+        stopRecordingFlow();
+        return;
+    }
+
+   #if JUCE_ANDROID || JUCE_IOS
+    juce::RuntimePermissions::request (juce::RuntimePermissions::recordAudio,
+        [this] (bool granted)
+        {
+            if (! granted) { setStatus ("Mic permission denied"); return; }
+            startRecordingFlow();
+        });
+   #else
+    startRecordingFlow();
+   #endif
+}
+
+void MainComponent::startRecordingFlow()
+{
+    if (! inputDeviceOpened)
+    {
+        deviceManager.removeAudioCallback (&audioSourcePlayer);
+        const auto err = deviceManager.initialiseWithDefaultDevices (1, 2);
+        deviceManager.addAudioCallback (&audioSourcePlayer);
+        if (err.isNotEmpty())
+        {
+            setStatus ("Audio input failed: " + err);
+            return;
+        }
+        deviceManager.addAudioCallback (&recorder);
+        inputDeviceOpened = true;
+    }
+
+    loopsAutoStoppedForRec = false;
+    if (! isOutputRouteSafeForMonitoring())
+    {
+        sampler.stopAllVoices();
+        loopsAutoStoppedForRec = true;
+    }
+
+    auto tmp = juce::File::getSpecialLocation (juce::File::tempDirectory)
+                  .getChildFile ("boceto_rec_"
+                                 + juce::String (juce::Time::currentTimeMillis())
+                                 + ".wav");
+
+    if (! recorder.startRecording (tmp))
+    {
+        setStatus ("Recording failed (no input?)");
+        return;
+    }
+
+    recBtn.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffaa2030));
+    setStatus ("Recording — tap REC to stop");
+}
+
+void MainComponent::stopRecordingFlow()
+{
+    auto file = recorder.stopRecording();
+    recBtn.setButtonText ("REC");
+    recBtn.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff262626));
+
+    if (! file.existsAsFile() || file.getSize() < 1024)
+    {
+        if (file.existsAsFile()) file.deleteFile();
+        setStatus ("No audio captured");
+        return;
+    }
+
+    setStatus ("Recorded " + juce::String (file.getSize() / 1024) + " KB — loading…");
+    loadFromAnyFile (file);
+    file.deleteFile();
+    juce::ignoreUnused (loopsAutoStoppedForRec);
 }
 
 void MainComponent::onPadClicked (int padIndex)

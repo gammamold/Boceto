@@ -54,6 +54,8 @@ add_library( ${BINARY_NAME}
     "../../../Source/WaveformDisplay.h"
     "../../../Source/LoopExporter.h"
     "../../../Source/LoopExporter.cpp"
+    "../../../Source/Recorder.h"
+    "../../../Source/Recorder.cpp"
     "../../../JUCE/modules/juce_audio_basics/audio_play_head/juce_AudioPlayHead.cpp"
     "../../../JUCE/modules/juce_audio_basics/audio_play_head/juce_AudioPlayHead.h"
     "../../../JUCE/modules/juce_audio_basics/buffers/juce_AudioChannelSet.cpp"

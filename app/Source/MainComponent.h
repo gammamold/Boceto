@@ -5,6 +5,7 @@
 #include "WaveformDisplay.h"
 #include "PitchFader.h"
 #include "LoopExporter.h"
+#include "Recorder.h"
 
 class MainComponent : public juce::Component, private juce::Timer
 {
@@ -40,6 +41,9 @@ private:
     void onExportClicked();
     void onSpreadClicked();
     void spreadToAllPads (bool useTransients);
+    void onRecClicked();
+    void startRecordingFlow();
+    void stopRecordingFlow();
     void onPadClicked (int padIndex);
 
     void recallPad (int padIndex);
@@ -69,6 +73,7 @@ private:
 
     // Calculator grid
     juce::TextButton fetchBtn  { "FETCH" };
+    juce::TextButton recBtn    { "REC" };
     juce::TextButton playBtn   { "PLAY" };
     juce::TextButton stopBtn   { "STOP" };
     juce::TextButton exportBtn { "EXPORT" };
@@ -100,6 +105,9 @@ private:
     SamplerEngine            sampler;
     AudioFetcher             fetcher;
     LoopExporter             exporter;
+    Recorder                 recorder;
+    bool                     inputDeviceOpened = false;
+    bool                     loopsAutoStoppedForRec = false;
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
