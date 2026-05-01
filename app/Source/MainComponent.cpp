@@ -588,6 +588,7 @@ void MainComponent::spreadToAllPads (bool useTransients)
 // ─── recording ──────────────────────────────────────────────────────────────
 
 #if JUCE_ANDROID
+#include <jni.h>
 namespace juce { extern JNIEnv* getEnv() noexcept; }
 
 static bool androidHeadphonesConnected()
