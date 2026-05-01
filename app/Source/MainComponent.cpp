@@ -25,8 +25,16 @@ MainComponent::MainComponent()
     };
     addAndMakeVisible (pasteBtn);
 
-    clearUrlBtn.onClick = [this] { urlField.clear(); };
-    addAndMakeVisible (clearUrlBtn);
+    efxBtn.onClick = [this]
+    {
+        if (efxView != nullptr)
+        {
+            efxView->syncFromChain();
+            efxView->setVisible (true);
+            efxView->toFront (true);
+        }
+    };
+    addAndMakeVisible (efxBtn);
 
     loadLocalBtn.onClick = [this] { onLoadLocalClicked(); };
     addAndMakeVisible (loadLocalBtn);
@@ -96,8 +104,14 @@ MainComponent::MainComponent()
 
     // --- audio ---
     deviceManager.initialiseWithDefaultDevices (0, 2);
-    audioSourcePlayer.setSource (&sampler);
+    audioSourcePlayer.setSource (&effects);
     deviceManager.addAudioCallback (&audioSourcePlayer);
+
+    // --- effects "room" ---
+    efxView = std::make_unique<EfxView> (effects);
+    efxView->setVisible (false);
+    efxView->onClose = [this] { if (efxView != nullptr) efxView->setVisible (false); };
+    addChildComponent (efxView.get());
 
     startTimerHz (30);
 
@@ -126,13 +140,16 @@ void MainComponent::resized()
     auto urlRow = r.removeFromTop (40);
     newBtn      .setBounds (urlRow.removeFromLeft (60));
     urlRow.removeFromLeft (4);
-    clearUrlBtn .setBounds (urlRow.removeFromRight (40));
+    efxBtn      .setBounds (urlRow.removeFromRight (50));
     urlRow.removeFromRight (4);
-    loadLocalBtn.setBounds (urlRow.removeFromRight (70));
+    loadLocalBtn.setBounds (urlRow.removeFromRight (60));
     urlRow.removeFromRight (4);
-    pasteBtn    .setBounds (urlRow.removeFromRight (70));
+    pasteBtn    .setBounds (urlRow.removeFromRight (60));
     urlRow.removeFromRight (4);
     urlField    .setBounds (urlRow);
+
+    if (efxView != nullptr)
+        efxView->setBounds (getLocalBounds());
     r.removeFromTop (6);
     serverField.setBounds (r.removeFromTop (32)); r.removeFromTop (8);
 

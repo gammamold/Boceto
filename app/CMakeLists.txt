@@ -37,6 +37,7 @@ target_sources(YouTubeSampler PRIVATE
     Source/AudioFetcher.cpp
     Source/LoopExporter.cpp
     Source/Recorder.cpp
+    Source/EffectsChain.cpp
 )
 
 target_compile_definitions(YouTubeSampler PRIVATE

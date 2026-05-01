@@ -26,6 +26,10 @@
       <FILE id="fRC_h" name="Recorder.h" compile="0" resource="0" file="Source/Recorder.h"/>
       <FILE id="fRC_cpp" name="Recorder.cpp" compile="1" resource="0"
             file="Source/Recorder.cpp"/>
+      <FILE id="fEC_h" name="EffectsChain.h" compile="0" resource="0" file="Source/EffectsChain.h"/>
+      <FILE id="fEC_cpp" name="EffectsChain.cpp" compile="1" resource="0"
+            file="Source/EffectsChain.cpp"/>
+      <FILE id="fEV_h" name="EfxView.h" compile="0" resource="0" file="Source/EfxView.h"/>
     </GROUP>
   </MAINGROUP>
   <JUCEOPTIONS JUCE_WEB_BROWSER="0" JUCE_USE_CURL="0"/>

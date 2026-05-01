@@ -1,6 +1,8 @@
 #pragma once
 #include "JuceHeader.h"
 #include "SamplerEngine.h"
+#include "EffectsChain.h"
+#include "EfxView.h"
 #include "AudioFetcher.h"
 #include "WaveformDisplay.h"
 #include "PitchFader.h"
@@ -65,7 +67,7 @@ private:
     juce::TextEditor serverField;
     juce::TextButton pasteBtn    { "PASTE" };
     juce::TextButton loadLocalBtn{ "LOAD" };
-    juce::TextButton clearUrlBtn { "X" };
+    juce::TextButton efxBtn      { "EFX" };
     juce::TextButton newBtn      { "NEW" };
 
     std::unique_ptr<juce::FileChooser> fileChooser;
@@ -109,9 +111,11 @@ private:
     juce::AudioDeviceManager deviceManager;
     juce::AudioSourcePlayer  audioSourcePlayer;
     SamplerEngine            sampler;
+    EffectsChain             effects { sampler };
     AudioFetcher             fetcher;
     LoopExporter             exporter;
     Recorder                 recorder;
+    std::unique_ptr<EfxView> efxView;
     bool                     inputDeviceOpened = false;
     bool                     loopsAutoStoppedForRec = false;
 
