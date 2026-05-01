@@ -661,26 +661,27 @@ void MainComponent::onRecClicked()
 
 void MainComponent::startRecordingFlow()
 {
-    if (! inputDeviceOpened)
-    {
-        deviceManager.removeAudioCallback (&audioSourcePlayer);
-        const auto err = deviceManager.initialiseWithDefaultDevices (1, 2);
-        deviceManager.addAudioCallback (&audioSourcePlayer);
-        if (err.isNotEmpty())
-        {
-            setStatus ("Audio input failed: " + err);
-            return;
-        }
-        deviceManager.addAudioCallback (&recorder);
-        inputDeviceOpened = true;
-    }
+    // Close the output side entirely while recording — even with voices
+    // stopped, Android Oboe input+output combined can trigger HAL-level
+    // sidetone / passthrough on some devices (Pixel 4a 5G observed).
+    sampler.stopAllVoices();
+    loopsAutoStoppedForRec = true;
 
-    loopsAutoStoppedForRec = false;
-    if (! isOutputRouteSafeForMonitoring())
+    deviceManager.removeAudioCallback (&audioSourcePlayer);
+    deviceManager.closeAudioDevice();
+
+    const auto err = deviceManager.initialiseWithDefaultDevices (1, 0);
+    if (err.isNotEmpty())
     {
-        sampler.stopAllVoices();
-        loopsAutoStoppedForRec = true;
+        // restore the output-only device so the app keeps working
+        deviceManager.initialiseWithDefaultDevices (0, 2);
+        deviceManager.addAudioCallback (&audioSourcePlayer);
+        inputDeviceOpened = false;
+        setStatus ("Audio input failed: " + err);
+        return;
     }
+    deviceManager.addAudioCallback (&recorder);
+    inputDeviceOpened = true;
 
     auto tmp = juce::File::getSpecialLocation (juce::File::tempDirectory)
                   .getChildFile ("boceto_rec_"
@@ -694,7 +695,7 @@ void MainComponent::startRecordingFlow()
     }
 
     recBtn.setColour (juce::TextButton::buttonColourId, juce::Colour (0xffaa2030));
-    setStatus ("Recording — tap REC to stop");
+    setStatus ("Recording — output muted, tap REC to stop");
 }
 
 void MainComponent::stopRecordingFlow()
@@ -702,6 +703,16 @@ void MainComponent::stopRecordingFlow()
     auto file = recorder.stopRecording();
     recBtn.setButtonText ("REC");
     recBtn.setColour (juce::TextButton::buttonColourId, juce::Colour (0xff262626));
+
+    // Tear down input device, restore output-only
+    if (inputDeviceOpened)
+    {
+        deviceManager.removeAudioCallback (&recorder);
+        deviceManager.closeAudioDevice();
+        deviceManager.initialiseWithDefaultDevices (0, 2);
+        deviceManager.addAudioCallback (&audioSourcePlayer);
+        inputDeviceOpened = false;
+    }
 
     if (! file.existsAsFile() || file.getSize() < 1024)
     {
