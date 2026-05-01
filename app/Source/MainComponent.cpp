@@ -76,6 +76,9 @@ MainComponent::MainComponent()
     rangeBtn.setButtonText ("RANGE ±8%");
     addAndMakeVisible (rangeBtn);
 
+    spreadBtn.onClick = [this] { onSpreadClicked(); };
+    addAndMakeVisible (spreadBtn);
+
     statusLabel.setText ("Ready", juce::dontSendNotification);
     statusLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     statusLabel.setJustificationType (juce::Justification::centredLeft);
@@ -170,10 +173,10 @@ void MainComponent::resized()
 
     const int cellW = (row2.getWidth() - padGap * 3) / 4;
     const int y = row2.getY(), h = row2.getHeight();
-    padBtns[4].setBounds (row2.getX(),                 y, cellW, h);
-    padBtns[5].setBounds (row2.getX() + cellW + padGap, y, cellW, h);
-    rangeBtn  .setBounds (row2.getX() + 2 * (cellW + padGap), y,
-                          2 * cellW + padGap, h);
+    padBtns[4].setBounds (row2.getX(),                       y, cellW, h);
+    padBtns[5].setBounds (row2.getX() + 1 * (cellW + padGap), y, cellW, h);
+    rangeBtn  .setBounds (row2.getX() + 2 * (cellW + padGap), y, cellW, h);
+    spreadBtn .setBounds (row2.getX() + 3 * (cellW + padGap), y, cellW, h);
 }
 
 void MainComponent::timerCallback()
@@ -472,6 +475,95 @@ void MainComponent::onRangeClicked()
 {
     pitch.cycleRange();
     rangeBtn.setButtonText ("RANGE ±" + juce::String (pitch.getRangePercent()) + "%");
+}
+
+void MainComponent::onSpreadClicked()
+{
+    if (! sampler.hasFile()) { setStatus ("Load a clip first"); return; }
+
+    juce::PopupMenu m;
+    m.addItem (1, "Equal slices");
+    m.addItem (2, "By transients");
+
+    m.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&spreadBtn),
+        [this] (int choice)
+        {
+            if (choice == 1) spreadToAllPads (false);
+            else if (choice == 2) spreadToAllPads (true);
+        });
+}
+
+void MainComponent::spreadToAllPads (bool useTransients)
+{
+    const int sourceVoice = sampler.getActiveVoice();
+    if (! sampler.voice (sourceVoice).hasFile()) { setStatus ("Load a clip first"); return; }
+
+    auto sourceFile = juce::File (sampler.voice (sourceVoice).getFilePath());
+    if (! sourceFile.existsAsFile()) { setStatus ("Source file missing"); return; }
+
+    sampler.stopAllVoices();
+
+    double bounds[kNumPads + 1] {};
+    bool didTransients = false;
+
+    if (useTransients)
+    {
+        const auto trs = sampler.voice (sourceVoice).getActiveTransients();
+        if ((int) trs.size() >= kNumPads)
+        {
+            bounds[0] = 0.0;
+            bounds[kNumPads] = 1.0;
+            for (int i = 1; i < kNumPads; ++i)
+            {
+                int idx = juce::roundToInt ((double) i * (double) (trs.size() - 1) / (double) kNumPads);
+                idx = juce::jlimit (0, (int) trs.size() - 1, idx);
+                bounds[i] = juce::jlimit (0.0, 1.0, trs[(std::size_t) idx]);
+            }
+            for (int i = 1; i <= kNumPads; ++i)
+                if (bounds[i] <= bounds[i - 1])
+                    bounds[i] = juce::jmin (1.0, bounds[i - 1] + 0.001);
+            didTransients = true;
+        }
+    }
+
+    if (! didTransients)
+        for (int i = 0; i <= kNumPads; ++i)
+            bounds[i] = (double) i / (double) kNumPads;
+
+    for (int i = 0; i < kNumPads; ++i)
+    {
+        sampler.setActiveVoice (i);
+        if (! sampler.loadFile (sourceFile))
+        {
+            sampler.setActiveVoice (sourceVoice);
+            setStatus ("Spread failed at PAD " + juce::String (i + 1));
+            return;
+        }
+        const auto cached = sampler.getCachedClipFile (i);
+        const double s = bounds[i];
+        const double e = bounds[(size_t) (i + 1)];
+        sampler.voice (i).setLoopStart (s);
+        sampler.voice (i).setLoopEnd   (e);
+        sampler.voice (i).setSpeed     (1.0);
+
+        pads[i].occupied  = true;
+        pads[i].clipPath  = cached.getFullPathName();
+        pads[i].loopStart = s;
+        pads[i].loopEnd   = e;
+        pads[i].speed     = 1.0;
+    }
+
+    sampler.setActiveVoice (sourceVoice);
+    selectActivePad (sourceVoice);
+
+    if (useTransients && ! didTransients)
+        setStatus ("Not enough transients — spread equally across 6 pads");
+    else
+        setStatus (didTransients ? "Spread by transients across 6 pads"
+                                 : "Spread equally across 6 pads");
+
+    refreshPadButtons();
+    persistState();
 }
 
 void MainComponent::onPadClicked (int padIndex)

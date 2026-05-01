@@ -38,6 +38,8 @@ private:
     void onResetClicked();
     void onRangeClicked();
     void onExportClicked();
+    void onSpreadClicked();
+    void spreadToAllPads (bool useTransients);
     void onPadClicked (int padIndex);
 
     void recallPad (int padIndex);
@@ -77,7 +79,8 @@ private:
     juce::TextButton resetBtn  { "RESET" };
 
     juce::TextButton padBtns[kNumPads];
-    juce::TextButton rangeBtn { "RANGE" };
+    juce::TextButton rangeBtn  { "RANGE" };
+    juce::TextButton spreadBtn { "SPREAD" };
 
     juce::TextButton zoomOutBtn  { "Z-" };
     juce::TextButton zoomInBtn   { "Z+" };
