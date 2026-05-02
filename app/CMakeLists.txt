@@ -16,6 +16,18 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(JUCE)
 
 # --- App --------------------------------------------------------------------
+# Allow cleartext HTTP to the local FastAPI server (LAN or Tailscale).
+# Personal-use app — server has no TLS, and the host varies per setup.
+# NSLocalNetworkUsageDescription covers the iOS 14+ local-network prompt.
+set(BOCETO_PLIST_EXTRAS
+"<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+</dict>
+<key>NSLocalNetworkUsageDescription</key>
+<string>Boceto fetches audio from your local Boceto server over your LAN or Tailscale.</string>")
+
 juce_add_gui_app(YouTubeSampler
     PRODUCT_NAME              "YouTube Sampler"
     BUNDLE_ID                 com.gammamold.youtubesampler
@@ -25,6 +37,7 @@ juce_add_gui_app(YouTubeSampler
     IPHONE_SCREEN_ORIENTATIONS UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait
     IPAD_SCREEN_ORIENTATIONS   UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait
     BACKGROUND_AUDIO_ENABLED  FALSE
+    PLIST_TO_MERGE            "${BOCETO_PLIST_EXTRAS}"
 )
 
 juce_generate_juce_header(YouTubeSampler)

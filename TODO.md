@@ -22,4 +22,4 @@
 - [ ] CROP function — replace source buffer with current loop slice; clear pads with warning
 - [ ] Auto-save live nudges to last-triggered pad (currently nudges are temp until SAVE)
 - [ ] Effects chain (`juce::dsp::ProcessorChain`) — at minimum a low/high-pass filter, maybe per-voice
-- [ ] iOS exporter — needs `NSAppTransportSecurity` `NSAllowsArbitraryLoads` for cleartext over Tailscale
+- [x] iOS exporter — `NSAppTransportSecurity` `NSAllowsArbitraryLoads` + `NSLocalNetworkUsageDescription` wired via `PLIST_TO_MERGE` in `app/CMakeLists.txt`
